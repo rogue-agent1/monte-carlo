@@ -1,34 +1,23 @@
 #!/usr/bin/env python3
-"""monte_carlo - Monte Carlo simulations."""
-import sys,random,math
-def estimate_pi(n=1000000):
+"""Monte Carlo — estimate pi, integrate functions, simulate."""
+import sys, random, math
+def estimate_pi(n=100000):
     inside=sum(1 for _ in range(n) if random.random()**2+random.random()**2<=1)
     return 4*inside/n
-def integrate(f,a,b,n=100000):
+def integrate(f, a, b, n=100000):
     total=sum(f(random.uniform(a,b)) for _ in range(n))
-    return(b-a)*total/n
-def birthday_paradox(people=23,trials=10000):
-    matches=0
-    for _ in range(trials):
-        bdays=set()
-        for _ in range(people):
-            b=random.randint(1,365)
-            if b in bdays:matches+=1;break
-            bdays.add(b)
-    return matches/trials
-def monty_hall(trials=10000,switch=True):
-    wins=0
-    for _ in range(trials):
-        car=random.randint(0,2);choice=random.randint(0,2)
-        doors=[0,1,2];doors.remove(car if car!=choice else (set(doors)-{car,choice}).pop())
-        if switch:choice=(set([0,1,2])-{choice}-set(doors)).pop() if len(set([0,1,2])-{choice}-set(doors))>0 else choice
-        if choice==car:wins+=1
-    return wins/trials
-if __name__=="__main__":
-    if len(sys.argv)<2:print("Usage: monte_carlo.py <pi|integrate|birthday|monty>");sys.exit(1)
-    cmd=sys.argv[1];n=int(sys.argv[2]) if len(sys.argv)>2 else 100000
-    if cmd=="pi":pi=estimate_pi(n);print(f"π ≈ {pi:.6f} (error: {abs(pi-math.pi):.6f})")
-    elif cmd=="birthday":p=birthday_paradox(23,n);print(f"Birthday paradox (23 people): {p:.2%}")
-    elif cmd=="monty":
-        s=monty_hall(n,True);ns=monty_hall(n,False)
-        print(f"Monty Hall - Switch: {s:.2%}, Stay: {ns:.2%}")
+    return (b-a)*total/n
+def random_walk(steps=1000, dims=2):
+    pos=[0]*dims
+    for _ in range(steps):
+        d=random.randint(0,dims-1); pos[d]+=random.choice([-1,1])
+    return math.sqrt(sum(x**2 for x in pos))
+def cli():
+    n=int(sys.argv[1]) if len(sys.argv)>1 else 100000
+    pi=estimate_pi(n)
+    print(f"  π estimate ({n} samples): {pi:.6f} (error: {abs(pi-math.pi):.6f})")
+    area=integrate(lambda x: math.sin(x), 0, math.pi, n)
+    print(f"  ∫sin(x)dx [0,π] = {area:.6f} (exact: 2.0)")
+    walks=[random_walk(1000) for _ in range(100)]
+    print(f"  2D random walk (1000 steps, 100 trials): avg dist = {sum(walks)/len(walks):.1f}")
+if __name__=="__main__": cli()
