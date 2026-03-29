@@ -1,6 +1,6 @@
 # monte-carlo
 
-Monte Carlo simulation toolkit
+Monte Carlo Simulation. Zero-dependency, single-file Python CLI.
 
 ## Usage
 
@@ -8,7 +8,6 @@ Monte Carlo simulation toolkit
 python3 monte_carlo.py --help
 ```
 
-## Features
+## License
 
-- Zero dependencies (Python 3.8+)
-- Single file implementation
+MIT

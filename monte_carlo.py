@@ -1,38 +1,50 @@
 #!/usr/bin/env python3
-"""monte_carlo - Monte Carlo simulations."""
-import sys,argparse,json,random,math
-def estimate_pi(n):
-    inside=sum(1 for _ in range(n) if random.random()**2+random.random()**2<=1)
-    return 4*inside/n
-def integrate(fn_str,a,b,n):
-    total=0
+"""Monte Carlo - Estimate pi, integrals, and run probabilistic simulations."""
+import sys, random, math
+
+def estimate_pi(n=1000000, seed=42):
+    random.seed(seed); inside = 0
     for _ in range(n):
-        x=random.uniform(a,b)
-        total+=eval(fn_str,{"x":x,"math":math,"__builtins__":{}})
-    return (b-a)*total/n
-def random_walk(steps,dims=2):
-    pos=[0]*dims
-    path=[pos[:]]
-    for _ in range(steps):
-        d=random.randint(0,dims-1);pos[d]+=random.choice([-1,1])
-        path.append(pos[:])
-    dist=math.sqrt(sum(p**2 for p in pos))
-    return dist,path
+        x, y = random.random(), random.random()
+        if x*x + y*y <= 1: inside += 1
+    return 4 * inside / n
+
+def integrate(f, a, b, n=100000, seed=42):
+    random.seed(seed)
+    total = sum(f(random.uniform(a, b)) for _ in range(n))
+    return (b - a) * total / n
+
+def birthday_paradox(people=23, trials=100000, seed=42):
+    random.seed(seed); matches = 0
+    for _ in range(trials):
+        bdays = set()
+        for _ in range(people):
+            b = random.randint(1, 365)
+            if b in bdays: matches += 1; break
+            bdays.add(b)
+    return matches / trials
+
+def buffon_needle(n=100000, seed=42):
+    random.seed(seed); crosses = 0
+    for _ in range(n):
+        y = random.random(); theta = random.uniform(0, math.pi)
+        if y <= 0.5 * math.sin(theta): crosses += 1
+    return 2 * n / crosses if crosses else 0
+
 def main():
-    p=argparse.ArgumentParser(description="Monte Carlo")
-    sub=p.add_subparsers(dest="cmd")
-    pi=sub.add_parser("pi");pi.add_argument("-n",type=int,default=100000)
-    ig=sub.add_parser("integrate");ig.add_argument("fn");ig.add_argument("a",type=float);ig.add_argument("b",type=float);ig.add_argument("-n",type=int,default=100000)
-    rw=sub.add_parser("walk");rw.add_argument("--steps",type=int,default=1000);rw.add_argument("--trials",type=int,default=100)
-    args=p.parse_args()
-    if args.cmd=="pi":
-        pi_est=estimate_pi(args.n)
-        print(json.dumps({"estimate":round(pi_est,6),"actual":round(math.pi,6),"error":round(abs(pi_est-math.pi),6),"samples":args.n}))
-    elif args.cmd=="integrate":
-        result=integrate(args.fn,args.a,args.b,args.n)
-        print(json.dumps({"function":args.fn,"range":[args.a,args.b],"integral":round(result,6),"samples":args.n}))
-    elif args.cmd=="walk":
-        dists=[random_walk(args.steps)[0] for _ in range(args.trials)]
-        print(json.dumps({"steps":args.steps,"trials":args.trials,"avg_distance":round(sum(dists)/len(dists),4),"expected":round(math.sqrt(args.steps),4),"max_distance":round(max(dists),4)}))
-    else:p.print_help()
-if __name__=="__main__":main()
+    print("=== Monte Carlo Simulations ===\n")
+    for n in [1000, 10000, 100000, 1000000]:
+        pi = estimate_pi(n)
+        err = abs(pi - math.pi)
+        print(f"  π estimate (n={n:>8d}): {pi:.6f}  error={err:.6f}")
+    area = integrate(lambda x: x**2, 0, 1, 100000)
+    print(f"\n  ∫x² dx [0,1] = {area:.6f} (exact: 0.333333)")
+    area2 = integrate(lambda x: math.sin(x), 0, math.pi, 100000)
+    print(f"  ∫sin(x) dx [0,π] = {area2:.6f} (exact: 2.000000)")
+    prob = birthday_paradox(23)
+    print(f"\n  Birthday paradox (23 people): {prob:.4f} (exact: ~0.5073)")
+    pi_buffon = buffon_needle()
+    print(f"  Buffon's needle π: {pi_buffon:.6f}")
+
+if __name__ == "__main__":
+    main()
