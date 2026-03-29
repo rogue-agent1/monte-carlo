@@ -1,50 +1,50 @@
 #!/usr/bin/env python3
-"""Monte Carlo - Estimate pi, integrals, and run probabilistic simulations."""
-import sys, random, math
+"""monte_carlo - Monte Carlo methods: pi estimation, integration, option pricing."""
+import sys, json, math, random
 
-def estimate_pi(n=1000000, seed=42):
-    random.seed(seed); inside = 0
+def estimate_pi(n=100000, seed=42):
+    rng = random.Random(seed); inside = 0
     for _ in range(n):
-        x, y = random.random(), random.random()
+        x, y = rng.random(), rng.random()
         if x*x + y*y <= 1: inside += 1
     return 4 * inside / n
 
-def integrate(f, a, b, n=100000, seed=42):
-    random.seed(seed)
-    total = sum(f(random.uniform(a, b)) for _ in range(n))
+def mc_integrate(f, a, b, n=100000, seed=42):
+    rng = random.Random(seed)
+    total = sum(f(rng.uniform(a, b)) for _ in range(n))
     return (b - a) * total / n
 
-def birthday_paradox(people=23, trials=100000, seed=42):
-    random.seed(seed); matches = 0
-    for _ in range(trials):
-        bdays = set()
-        for _ in range(people):
-            b = random.randint(1, 365)
-            if b in bdays: matches += 1; break
-            bdays.add(b)
-    return matches / trials
-
-def buffon_needle(n=100000, seed=42):
-    random.seed(seed); crosses = 0
+def buffon_needle(n=100000, L=1, D=2, seed=42):
+    rng = random.Random(seed); crosses = 0
     for _ in range(n):
-        y = random.random(); theta = random.uniform(0, math.pi)
-        if y <= 0.5 * math.sin(theta): crosses += 1
-    return 2 * n / crosses if crosses else 0
+        y = rng.uniform(0, D/2)
+        theta = rng.uniform(0, math.pi)
+        if y <= L/2 * math.sin(theta): crosses += 1
+    return 2*L*n / (crosses*D) if crosses else float('inf')
+
+def black_scholes_mc(S, K, T, r, sigma, n=100000, seed=42):
+    rng = random.Random(seed); payoffs = []
+    for _ in range(n):
+        z = sum(rng.gauss(0,1) for _ in range(12)) - 6  # approx normal
+        ST = S * math.exp((r - 0.5*sigma**2)*T + sigma*math.sqrt(T)*z)
+        payoffs.append(max(ST - K, 0))
+    return math.exp(-r*T) * sum(payoffs) / n
 
 def main():
-    print("=== Monte Carlo Simulations ===\n")
+    print("Monte Carlo methods demo\n")
     for n in [1000, 10000, 100000, 1000000]:
         pi = estimate_pi(n)
         err = abs(pi - math.pi)
-        print(f"  π estimate (n={n:>8d}): {pi:.6f}  error={err:.6f}")
-    area = integrate(lambda x: x**2, 0, 1, 100000)
-    print(f"\n  ∫x² dx [0,1] = {area:.6f} (exact: 0.333333)")
-    area2 = integrate(lambda x: math.sin(x), 0, math.pi, 100000)
-    print(f"  ∫sin(x) dx [0,π] = {area2:.6f} (exact: 2.000000)")
-    prob = birthday_paradox(23)
-    print(f"\n  Birthday paradox (23 people): {prob:.4f} (exact: ~0.5073)")
-    pi_buffon = buffon_needle()
-    print(f"  Buffon's needle π: {pi_buffon:.6f}")
+        print(f"  π estimate (n={n:>7d}): {pi:.6f} (error={err:.6f})")
+    # Integration
+    integral = mc_integrate(lambda x: math.sin(x), 0, math.pi, 100000)
+    print(f"\n  ∫sin(x) [0,π] = {integral:.6f} (exact=2.0)")
+    # Buffon's needle
+    pi_buffon = buffon_needle(500000)
+    print(f"  Buffon's π = {pi_buffon:.4f}")
+    # Option pricing
+    price = black_scholes_mc(S=100, K=105, T=1, r=0.05, sigma=0.2)
+    print(f"\n  Call option price: ${price:.2f}")
 
 if __name__ == "__main__":
     main()
