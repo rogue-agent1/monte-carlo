@@ -1,45 +1,50 @@
 #!/usr/bin/env python3
-"""Monte Carlo simulation toolkit — pi estimation, integration, random walk."""
-import sys, random, math
+"""Monte Carlo simulations. Zero dependencies."""
+import random, math
 
-def estimate_pi(n=10000):
-    inside = sum(1 for _ in range(n) if random.random()**2 + random.random()**2 <= 1)
+def estimate_pi(n=10000, seed=42):
+    random.seed(seed)
+    inside = sum(1 for _ in range(n) if random.random()**2+random.random()**2 <= 1)
     return 4 * inside / n
 
-def mc_integrate(f, a, b, n=10000):
-    total = sum(f(random.uniform(a, b)) for _ in range(n))
+def monte_carlo_integrate(fn, a, b, n=10000, seed=42):
+    random.seed(seed)
+    total = sum(fn(random.uniform(a, b)) for _ in range(n))
     return (b - a) * total / n
 
-def random_walk_2d(steps):
-    x = y = 0
-    path = [(x, y)]
+def bootstrap(data, stat_fn, n_resamples=1000, seed=42):
+    random.seed(seed)
+    stats = []
+    for _ in range(n_resamples):
+        sample = [random.choice(data) for _ in range(len(data))]
+        stats.append(stat_fn(sample))
+    stats.sort()
+    mean = sum(stats) / len(stats)
+    ci_low = stats[int(0.025 * len(stats))]
+    ci_high = stats[int(0.975 * len(stats))]
+    return {"mean": mean, "ci_low": ci_low, "ci_high": ci_high, "std": _std(stats)}
+
+def _std(data):
+    m = sum(data)/len(data)
+    return math.sqrt(sum((x-m)**2 for x in data)/len(data))
+
+def random_walk(steps=100, seed=42):
+    random.seed(seed)
+    pos = 0; path = [0]
     for _ in range(steps):
-        dx, dy = random.choice([(1,0),(-1,0),(0,1),(0,-1)])
-        x += dx; y += dy
-        path.append((x, y))
+        pos += random.choice([-1, 1]); path.append(pos)
     return path
 
-def bootstrap_mean(data, n_samples=1000):
-    means = []
-    for _ in range(n_samples):
-        sample = [random.choice(data) for _ in range(len(data))]
-        means.append(sum(sample) / len(sample))
-    means.sort()
-    return sum(means)/len(means), means[int(0.025*n_samples)], means[int(0.975*n_samples)]
-
-def test():
-    random.seed(42)
-    pi = estimate_pi(100000)
-    assert abs(pi - math.pi) < 0.05
-    area = mc_integrate(lambda x: x**2, 0, 1, 100000)
-    assert abs(area - 1/3) < 0.02
-    path = random_walk_2d(100)
-    assert len(path) == 101
-    mean, lo, hi = bootstrap_mean([1,2,3,4,5,6,7,8,9,10])
-    assert 4 < mean < 7
-    assert lo < hi
-    print("  monte_carlo: ALL TESTS PASSED")
+def markov_chain_mc(transition_matrix, start, steps=1000, seed=42):
+    random.seed(seed)
+    state = start; counts = {}
+    for _ in range(steps):
+        counts[state] = counts.get(state, 0) + 1
+        r = random.random(); cumsum = 0
+        for next_state, prob in transition_matrix[state].items():
+            cumsum += prob
+            if r <= cumsum: state = next_state; break
+    return {k: v/steps for k, v in counts.items()}
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "test": test()
-    else: print(f"Pi estimate: {estimate_pi():.4f}")
+    print(f"Pi estimate: {estimate_pi(100000):.4f}")

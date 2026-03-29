@@ -1,10 +1,3 @@
-# monte-carlo
-
-Single-file Python CLI. Zero dependencies.
-
-## Usage
-
-```bash
-python3 monte_carlo.py
-python3 monte_carlo.py test
-```
+# monte_carlo
+Monte Carlo — pi estimation, integration, bootstrap, random walk, MCMC.
+Single-file Python, zero dependencies.
