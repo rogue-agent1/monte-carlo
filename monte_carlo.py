@@ -1,67 +1,38 @@
 #!/usr/bin/env python3
 """monte_carlo - Monte Carlo simulations."""
-import argparse, random, math
-
+import sys,argparse,json,random,math
 def estimate_pi(n):
-    inside = sum(1 for _ in range(n) if random.random()**2 + random.random()**2 <= 1)
-    return 4 * inside / n
-
-def estimate_integral(f, a, b, n, y_max=1):
-    inside = sum(1 for _ in range(n) if random.uniform(0, y_max) <= f(random.uniform(a, b)))
-    return (b - a) * y_max * inside / n
-
-def random_walk_2d(steps):
-    x, y, max_dist = 0, 0, 0
+    inside=sum(1 for _ in range(n) if random.random()**2+random.random()**2<=1)
+    return 4*inside/n
+def integrate(fn_str,a,b,n):
+    total=0
+    for _ in range(n):
+        x=random.uniform(a,b)
+        total+=eval(fn_str,{"x":x,"math":math,"__builtins__":{}})
+    return (b-a)*total/n
+def random_walk(steps,dims=2):
+    pos=[0]*dims
+    path=[pos[:]]
     for _ in range(steps):
-        dx, dy = random.choice([(1,0),(-1,0),(0,1),(0,-1)])
-        x += dx; y += dy
-        max_dist = max(max_dist, math.sqrt(x*x + y*y))
-    return math.sqrt(x*x + y*y), max_dist
-
-def birthday_paradox(n_people, trials=10000):
-    collisions = 0
-    for _ in range(trials):
-        bdays = set()
-        for _ in range(n_people):
-            b = random.randint(1, 365)
-            if b in bdays: collisions += 1; break
-            bdays.add(b)
-    return collisions / trials
-
-def monty_hall(trials=10000):
-    switch_wins = stay_wins = 0
-    for _ in range(trials):
-        car = random.randint(0, 2); choice = random.randint(0, 2)
-        if choice == car: stay_wins += 1
-        else: switch_wins += 1
-    return stay_wins / trials, switch_wins / trials
-
+        d=random.randint(0,dims-1);pos[d]+=random.choice([-1,1])
+        path.append(pos[:])
+    dist=math.sqrt(sum(p**2 for p in pos))
+    return dist,path
 def main():
-    p = argparse.ArgumentParser(description="Monte Carlo simulations")
-    p.add_argument("sim", choices=["pi", "integral", "walk", "birthday", "monty-hall"])
-    p.add_argument("-n", type=int, default=100000)
-    args = p.parse_args()
-    if args.sim == "pi":
-        pi = estimate_pi(args.n)
-        print(f"Pi estimate: {pi:.6f} (error: {abs(pi-math.pi):.6f})")
-    elif args.sim == "integral":
-        result = estimate_integral(lambda x: math.sin(x), 0, math.pi, args.n, 1)
-        print(f"Integral of sin(x) from 0 to pi: {result:.6f} (exact: 2.0)")
-    elif args.sim == "walk":
-        trials = min(args.n, 1000)
-        dists = [random_walk_2d(100)[0] for _ in range(trials)]
-        avg = sum(dists) / len(dists)
-        print(f"2D random walk (100 steps, {trials} trials): avg distance = {avg:.2f}")
-        print(f"  Expected (sqrt(n)): {math.sqrt(100):.2f}")
-    elif args.sim == "birthday":
-        for n in [23, 30, 40, 50, 57, 70]:
-            prob = birthday_paradox(n, min(args.n, 10000))
-            print(f"  {n:2d} people: {prob:.3f} collision probability")
-    elif args.sim == "monty-hall":
-        stay, switch = monty_hall(args.n)
-        print(f"Monty Hall ({args.n} trials):")
-        print(f"  Stay win rate:   {stay:.3f}")
-        print(f"  Switch win rate: {switch:.3f}")
-
-if __name__ == "__main__":
-    main()
+    p=argparse.ArgumentParser(description="Monte Carlo")
+    sub=p.add_subparsers(dest="cmd")
+    pi=sub.add_parser("pi");pi.add_argument("-n",type=int,default=100000)
+    ig=sub.add_parser("integrate");ig.add_argument("fn");ig.add_argument("a",type=float);ig.add_argument("b",type=float);ig.add_argument("-n",type=int,default=100000)
+    rw=sub.add_parser("walk");rw.add_argument("--steps",type=int,default=1000);rw.add_argument("--trials",type=int,default=100)
+    args=p.parse_args()
+    if args.cmd=="pi":
+        pi_est=estimate_pi(args.n)
+        print(json.dumps({"estimate":round(pi_est,6),"actual":round(math.pi,6),"error":round(abs(pi_est-math.pi),6),"samples":args.n}))
+    elif args.cmd=="integrate":
+        result=integrate(args.fn,args.a,args.b,args.n)
+        print(json.dumps({"function":args.fn,"range":[args.a,args.b],"integral":round(result,6),"samples":args.n}))
+    elif args.cmd=="walk":
+        dists=[random_walk(args.steps)[0] for _ in range(args.trials)]
+        print(json.dumps({"steps":args.steps,"trials":args.trials,"avg_distance":round(sum(dists)/len(dists),4),"expected":round(math.sqrt(args.steps),4),"max_distance":round(max(dists),4)}))
+    else:p.print_help()
+if __name__=="__main__":main()
